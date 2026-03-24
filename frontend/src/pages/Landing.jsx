@@ -395,7 +395,7 @@ export default function Landing() {
 
           <div style={styles.testimonialsGrid}>
             <TestimonialCard delay={0}
-              name="Nitin Parmar" role="Medical Student"
+              name="Krinal Parmar" role="Medical Student"
               avatar="linear-gradient(135deg,#7c6af7,#c084fc)"
               text="I used to lose track of how long I studied. Now I can see exactly where every hour goes. My exam scores improved by 20% in one semester." />
             <TestimonialCard delay={100}
