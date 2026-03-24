@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
-import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import NewSession from './pages/NewSession';
 import ActiveSession from './pages/ActiveSession';
@@ -20,25 +20,42 @@ function PrivateRoute({ children }) {
   return user ? children : <Navigate to="/login" />;
 }
 
-function AppRoutes() {
+function AppLayout() {
   const { user } = useAuth();
+
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/welcome"  element={<Landing />} />
+        <Route path="/login"    element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="*"         element={<Landing />} />
+      </Routes>
+    );
+  }
+
   return (
-    <>
-      {user && <Navbar />}
-      <main className={user ? 'main-content' : ''}>
-        <Routes>
-          <Route path="/welcome"      element={<Landing />} />
-          <Route path="/login"        element={<Login />} />
-          <Route path="/register"     element={<Register />} />
-          <Route path="/"             element={user ? <Dashboard /> : <Landing />} />
-          <Route path="/new"          element={<PrivateRoute><NewSession /></PrivateRoute>} />
-          <Route path="/session/:id"  element={<PrivateRoute><ActiveSession /></PrivateRoute>} />
-          <Route path="/history"      element={<PrivateRoute><History /></PrivateRoute>} />
-          <Route path="/analytics"    element={<PrivateRoute><Analytics /></PrivateRoute>} />
-          <Route path="/pomodoro"     element={<PrivateRoute><PomodoroTimer /></PrivateRoute>} />
-        </Routes>
-      </main>
-    </>
+    <div className="app-layout">
+      <Sidebar />
+      <div className="app-content">
+        {/* Mobile topbar spacer */}
+        <div className="mobile-topbar-spacer" />
+        <main className="main-content">
+          <Routes>
+            <Route path="/"            element={<Dashboard />} />
+            <Route path="/analytics"   element={<Analytics />} />
+            <Route path="/history"     element={<History />} />
+            <Route path="/pomodoro"    element={<PomodoroTimer />} />
+            <Route path="/new"         element={<NewSession />} />
+            <Route path="/session/:id" element={<ActiveSession />} />
+            <Route path="/welcome"     element={<Landing />} />
+            <Route path="/login"       element={<Navigate to="/" />} />
+            <Route path="/register"    element={<Navigate to="/" />} />
+            <Route path="*"            element={<Navigate to="/" />} />
+          </Routes>
+        </main>
+      </div>
+    </div>
   );
 }
 
@@ -47,7 +64,7 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <Router>
-          <div className="app"><AppRoutes /></div>
+          <AppLayout />
         </Router>
       </AuthProvider>
     </ThemeProvider>
