@@ -1,0 +1,17 @@
+```
+# Environment files - NEVER commit these
+backend/.env
+frontend/.env
+.env
+
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build output
+frontend/build/
+
+# OS files
+.DS_Store
+Thumbs.db
+```
