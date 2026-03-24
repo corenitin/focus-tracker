@@ -12,19 +12,13 @@ export default function Register() {
   const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+    e.preventDefault(); setError('');
     if (form.password !== form.confirm) { setError('Passwords do not match.'); return; }
     if (form.password.length < 6) { setError('Password must be at least 6 characters.'); return; }
     setLoading(true);
-    try {
-      await register(form.name, form.email, form.password);
-      navigate('/');
-    } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    try { await register(form.name, form.email, form.password); navigate('/'); }
+    catch (err) { setError(err.response?.data?.error || 'Registration failed. Please try again.'); }
+    finally { setLoading(false); }
   };
 
   return (
@@ -37,7 +31,11 @@ export default function Register() {
         <h2 className="auth-title">Create account</h2>
         <p className="auth-subtitle">Start tracking your focus sessions</p>
 
-        {error && <div className="alert alert-error">⚠️ {error}</div>}
+        {error && (
+          <div className="alert alert-error">
+            <span className="mi mi-sm">warning</span> {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -62,7 +60,8 @@ export default function Register() {
           </div>
           <button type="submit" className="btn btn-success btn-full"
             style={{ marginTop: '8px' }} disabled={loading}>
-            {loading ? '⏳ Creating account...' : 'Create Account →'}
+            <span className="mi mi-sm">{loading ? 'hourglass_empty' : 'person_add'}</span>
+            {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
 

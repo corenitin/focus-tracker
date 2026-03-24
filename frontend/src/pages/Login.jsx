@@ -13,16 +13,10 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      await login(form.email, form.password);
-      navigate('/');
-    } catch (err) {
-      setError(err.response?.data?.error || 'Login failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    setError(''); setLoading(true);
+    try { await login(form.email, form.password); navigate('/'); }
+    catch (err) { setError(err.response?.data?.error || 'Login failed. Please try again.'); }
+    finally { setLoading(false); }
   };
 
   return (
@@ -35,41 +29,29 @@ export default function Login() {
         <h2 className="auth-title">Welcome back</h2>
         <p className="auth-subtitle">Sign in to your account</p>
 
-        {error && <div className="alert alert-error">⚠️ {error}</div>}
+        {error && (
+          <div className="alert alert-error">
+            <span className="mi mi-sm">warning</span> {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label">Email</label>
-            <input
-              className="form-input"
-              type="email"
-              name="email"
-              placeholder="you@example.com"
-              value={form.email}
-              onChange={handleChange}
-              required
-              autoFocus
-            />
+            <input className="form-input" type="email" name="email"
+              placeholder="you@example.com" value={form.email}
+              onChange={handleChange} required autoFocus />
           </div>
           <div className="form-group">
             <label className="form-label">Password</label>
-            <input
-              className="form-input"
-              type="password"
-              name="password"
-              placeholder="••••••••"
-              value={form.password}
-              onChange={handleChange}
-              required
-            />
+            <input className="form-input" type="password" name="password"
+              placeholder="••••••••" value={form.password}
+              onChange={handleChange} required />
           </div>
-          <button
-            type="submit"
-            className="btn btn-primary btn-full"
-            style={{ marginTop: '8px' }}
-            disabled={loading}
-          >
-            {loading ? '⏳ Signing in...' : 'Sign In →'}
+          <button type="submit" className="btn btn-primary btn-full"
+            style={{ marginTop: '8px' }} disabled={loading}>
+            <span className="mi mi-sm">{loading ? 'hourglass_empty' : 'login'}</span>
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 

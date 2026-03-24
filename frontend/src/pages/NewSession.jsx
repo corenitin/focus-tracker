@@ -14,8 +14,7 @@ export default function NewSession() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim()) { setError('Please enter a session title.'); return; }
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       const res = await createSession(form);
       navigate(`/session/${res.data.data._id}`);
@@ -32,7 +31,7 @@ export default function NewSession() {
         <p className="page-subtitle">Define your focus, then lock in.</p>
       </div>
 
-      {error && <div className="alert alert-error">⚠️ {error}</div>}
+      {error && <div className="alert alert-error"><span className="mi mi-sm">warning</span> {error}</div>}
 
       <form onSubmit={handleSubmit}>
         <div className="card">
@@ -51,7 +50,7 @@ export default function NewSession() {
 
           <div className="form-group">
             <label className="form-label">Category</label>
-            <div className="category-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px' }}>
+            <div className="category-grid">
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat}
@@ -63,9 +62,9 @@ export default function NewSession() {
                     border: `1px solid ${form.category === cat ? 'var(--accent)' : 'var(--border)'}`,
                     background: form.category === cat ? 'var(--accent-glow2)' : 'transparent',
                     color: form.category === cat ? 'var(--accent)' : 'var(--text2)',
-                    fontFamily: 'Syne, sans-serif',
-                    fontWeight: 600,
-                    fontSize: '0.85rem',
+                    fontFamily: 'Poppins, sans-serif',
+                    fontWeight: 500,
+                    fontSize: '0.83rem',
                     cursor: 'pointer',
                     transition: 'all 0.15s',
                     display: 'flex',
@@ -73,7 +72,7 @@ export default function NewSession() {
                     gap: '6px',
                   }}
                 >
-                  {CAT_ICONS[cat]} {cat}
+                  <span className="mi mi-sm">{CAT_ICONS[cat]}</span> {cat}
                 </button>
               ))}
             </div>
@@ -94,7 +93,8 @@ export default function NewSession() {
 
         <div style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
           <button type="submit" className="btn btn-success btn-lg" style={{ flex: 1 }} disabled={loading}>
-            {loading ? '⏳ Starting...' : '▶ Start Session'}
+            <span className="mi">play_arrow</span>
+            {loading ? 'Starting...' : 'Start Session'}
           </button>
           <button type="button" className="btn btn-ghost btn-lg" onClick={() => navigate('/')}>
             Cancel

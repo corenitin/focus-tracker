@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import NewSession from './pages/NewSession';
@@ -23,12 +24,12 @@ function AppRoutes() {
       {user && <Navbar />}
       <main className={user ? 'main-content' : ''}>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          <Route path="/login"    element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/new" element={<PrivateRoute><NewSession /></PrivateRoute>} />
+          <Route path="/"         element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+          <Route path="/new"      element={<PrivateRoute><NewSession /></PrivateRoute>} />
           <Route path="/session/:id" element={<PrivateRoute><ActiveSession /></PrivateRoute>} />
-          <Route path="/history" element={<PrivateRoute><History /></PrivateRoute>} />
+          <Route path="/history"  element={<PrivateRoute><History /></PrivateRoute>} />
         </Routes>
       </main>
     </>
@@ -37,13 +38,15 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="app">
-          <AppRoutes />
-        </div>
-      </Router>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <div className="app">
+            <AppRoutes />
+          </div>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

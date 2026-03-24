@@ -13,26 +13,28 @@ export function formatTimer(seconds) {
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
   if (h > 0) {
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
   }
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 
 export function formatDate(date) {
-  return new Date(date).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
-  });
+  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function formatTime(date) {
-  return new Date(date).toLocaleTimeString('en-US', {
-    hour: '2-digit', minute: '2-digit',
-  });
+  return new Date(date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
 
-export const CATEGORIES = ['Study', 'Work', 'Reading', 'Coding', 'Exercise', 'Meditation', 'Other'];
+export const CATEGORIES = ['Study','Work','Reading','Coding','Exercise','Meditation','Other'];
 
+// Material Icons names for each category
 export const CAT_ICONS = {
-  Study: '📚', Work: '💼', Reading: '📖', Coding: '💻',
-  Exercise: '🏃', Meditation: '🧘', Other: '⚡',
+  Study:      'menu_book',
+  Work:       'work',
+  Reading:    'auto_stories',
+  Coding:     'code',
+  Exercise:   'fitness_center',
+  Meditation: 'self_improvement',
+  Other:      'category',
 };
