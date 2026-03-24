@@ -9,6 +9,7 @@ import ActiveSession from './pages/ActiveSession';
 import History from './pages/History';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Landing from './pages/Landing';
 import './App.css';
 
 function PrivateRoute({ children }) {
@@ -24,12 +25,20 @@ function AppRoutes() {
       {user && <Navbar />}
       <main className={user ? 'main-content' : ''}>
         <Routes>
-          <Route path="/login"    element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/"         element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/new"      element={<PrivateRoute><NewSession /></PrivateRoute>} />
-          <Route path="/session/:id" element={<PrivateRoute><ActiveSession /></PrivateRoute>} />
-          <Route path="/history"  element={<PrivateRoute><History /></PrivateRoute>} />
+          {/* Public routes */}
+          <Route path="/welcome"   element={<Landing />} />
+          <Route path="/login"     element={<Login />} />
+          <Route path="/register"  element={<Register />} />
+
+          {/* Root: logged-in → dashboard, guest → landing */}
+          <Route path="/" element={
+            user ? <Dashboard /> : <Landing />
+          } />
+
+          {/* Protected routes */}
+          <Route path="/new"            element={<PrivateRoute><NewSession /></PrivateRoute>} />
+          <Route path="/session/:id"    element={<PrivateRoute><ActiveSession /></PrivateRoute>} />
+          <Route path="/history"        element={<PrivateRoute><History /></PrivateRoute>} />
         </Routes>
       </main>
     </>

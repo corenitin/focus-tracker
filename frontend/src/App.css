@@ -607,3 +607,19 @@ body {
 @supports (-webkit-touch-callout: none) {
   .auth-page { min-height: -webkit-fill-available; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   LANDING PAGE RESPONSIVE
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Navbar */
+  .landing-nav-register span { display: none; }
+
+  /* Hero stacks vertically */
+  .hero-mockup { display: none; }
+}
+
+@media (max-width: 480px) {
+  /* Hide secondary nav links on mobile */
+  .nav-login-btn { display: none; }
+}
