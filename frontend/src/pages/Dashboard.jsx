@@ -63,8 +63,17 @@ export default function Dashboard() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  if (loading) return <div className="spinner" />;
-  if (!stats) return <div className="spinner" />;
+  if (loading || !stats) return (
+    <div style={{ textAlign: 'center', padding: '80px 24px' }}>
+      <div className="spinner" />
+      <p style={{ color: 'var(--text2)', marginTop: '16px', fontSize: '0.9rem' }}>
+        Connecting to server...
+      </p>
+      <p style={{ color: 'var(--text3)', marginTop: '8px', fontSize: '0.8rem' }}>
+        First load may take 30–60 seconds
+      </p>
+    </div>
+  );
 
   return (
     <div>
