@@ -11,16 +11,15 @@ app.use(cors({
     'http://localhost:3000',
     'https://focus-tracker-nu.vercel.app',
   ],
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
-
-// Handle preflight requests for ALL routes
-app.options('*', cors());  // ← add this line
+app.options('*', cors());
 app.use(express.json());
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
+app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/sessions', require('./routes/sessionRoutes'));
 app.use('/api/stats', require('./routes/statsRoutes'));
 
@@ -41,7 +40,7 @@ const PORT = process.env.PORT || 5000;
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
-    console.log(`✅ MongoDB connected successfully !! on : ${process.env.MONGO_URI}`);
+    console.log('✅ MongoDB connected successfully');
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
     });

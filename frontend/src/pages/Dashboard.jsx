@@ -15,7 +15,7 @@ function StatCard({ icon, value, label, color }) {
 
 function MiniBarChart({ data }) {
   if (!data || data.length === 0) return null;
-  const max = Math.max(...(data || []).map((d) => d.totalDuration), 1);
+  const max = Math.max(...data.map((d) => d.totalDuration), 1);
   const today = new Date().toISOString().split('T')[0];
 
   return (
@@ -63,17 +63,7 @@ export default function Dashboard() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  if (loading || !stats) return (
-    <div style={{ textAlign: 'center', padding: '80px 24px' }}>
-      <div className="spinner" />
-      <p style={{ color: 'var(--text2)', marginTop: '16px', fontSize: '0.9rem' }}>
-        Connecting to server...
-      </p>
-      <p style={{ color: 'var(--text3)', marginTop: '8px', fontSize: '0.8rem' }}>
-        First load may take 30–60 seconds
-      </p>
-    </div>
-  );
+  if (loading) return <div className="spinner" />;
 
   return (
     <div>
@@ -103,10 +93,10 @@ export default function Dashboard() {
           <h3 style={{ fontWeight: 700, marginBottom: '16px', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text2)' }}>
             By Category
           </h3>
-          {stats?.byCategory && stats.byCategory.length > 0 ? (
+          {stats?.byCategory?.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {stats.byCategory.slice(0, 5).map((cat) => {
-                const maxTime = stats?.byCategory?.[0]?.total || 1;
+                const maxTime = stats.byCategory[0]?.total || 1;
                 return (
                   <div key={cat._id}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
