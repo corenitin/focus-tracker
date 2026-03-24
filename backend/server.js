@@ -9,10 +9,15 @@ const app = express();
 app.use(cors({
   origin: [
     'http://localhost:3000',
-    'https://focus-tracker-nu.vercel.app/'  // your real vercel URL here
+    'https://focus-tracker-nu.vercel.app',
   ],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
+
+// Handle preflight requests for ALL routes
+app.options('*', cors());  // ← add this line
 app.use(express.json());
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
