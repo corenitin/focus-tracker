@@ -395,15 +395,15 @@ export default function Landing() {
 
           <div style={styles.testimonialsGrid}>
             <TestimonialCard delay={0}
-              name="Krinal Parmar" role="Medical Student"
+              name="Arjun Mehta" role="Medical Student"
               avatar="linear-gradient(135deg,#7c6af7,#c084fc)"
               text="I used to lose track of how long I studied. Now I can see exactly where every hour goes. My exam scores improved by 20% in one semester." />
             <TestimonialCard delay={100}
-              name="Kirtan Patel" role="Frontend Developer"
+              name="Priya Sharma" role="Frontend Developer"
               avatar="linear-gradient(135deg,#00d4ff,#00e676)"
               text="The pause feature is a lifesaver. I can take breaks without guilt knowing my actual focus time is being tracked separately. Brilliant app." />
             <TestimonialCard delay={200}
-              name="Mohit Parmar" role="Content Creator"
+              name="Rahul Singh" role="Content Creator"
               avatar="linear-gradient(135deg,#ff6b35,#ffd23f)"
               text="I love seeing the 7-day chart fill up. It motivates me to keep going every day. Simple, clean, and it actually works." />
           </div>

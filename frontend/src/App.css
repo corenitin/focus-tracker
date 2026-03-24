@@ -623,3 +623,22 @@ body {
   /* Hide secondary nav links on mobile */
   .nav-login-btn { display: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE NAVBAR HAMBURGER
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .navbar-links { display: none !important; }
+  .mobile-menu-btn { display: flex !important; }
+}
+@media (min-width: 769px) {
+  .mobile-menu-btn { display: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TABLE RESPONSIVE SCROLL
+   ═══════════════════════════════════════════════════════════════ */
+table { min-width: 480px; }
+@media (max-width: 600px) {
+  .grid-2 { grid-template-columns: 1fr !important; }
+}

@@ -7,6 +7,8 @@ import Dashboard from './pages/Dashboard';
 import NewSession from './pages/NewSession';
 import ActiveSession from './pages/ActiveSession';
 import History from './pages/History';
+import Analytics from './pages/Analytics';
+import PomodoroTimer from './pages/PomodoroTimer';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Landing from './pages/Landing';
@@ -25,20 +27,15 @@ function AppRoutes() {
       {user && <Navbar />}
       <main className={user ? 'main-content' : ''}>
         <Routes>
-          {/* Public routes */}
-          <Route path="/welcome"   element={<Landing />} />
-          <Route path="/login"     element={<Login />} />
-          <Route path="/register"  element={<Register />} />
-
-          {/* Root: logged-in → dashboard, guest → landing */}
-          <Route path="/" element={
-            user ? <Dashboard /> : <Landing />
-          } />
-
-          {/* Protected routes */}
-          <Route path="/new"            element={<PrivateRoute><NewSession /></PrivateRoute>} />
-          <Route path="/session/:id"    element={<PrivateRoute><ActiveSession /></PrivateRoute>} />
-          <Route path="/history"        element={<PrivateRoute><History /></PrivateRoute>} />
+          <Route path="/welcome"      element={<Landing />} />
+          <Route path="/login"        element={<Login />} />
+          <Route path="/register"     element={<Register />} />
+          <Route path="/"             element={user ? <Dashboard /> : <Landing />} />
+          <Route path="/new"          element={<PrivateRoute><NewSession /></PrivateRoute>} />
+          <Route path="/session/:id"  element={<PrivateRoute><ActiveSession /></PrivateRoute>} />
+          <Route path="/history"      element={<PrivateRoute><History /></PrivateRoute>} />
+          <Route path="/analytics"    element={<PrivateRoute><Analytics /></PrivateRoute>} />
+          <Route path="/pomodoro"     element={<PrivateRoute><PomodoroTimer /></PrivateRoute>} />
         </Routes>
       </main>
     </>
@@ -50,9 +47,7 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <Router>
-          <div className="app">
-            <AppRoutes />
-          </div>
+          <div className="app"><AppRoutes /></div>
         </Router>
       </AuthProvider>
     </ThemeProvider>
