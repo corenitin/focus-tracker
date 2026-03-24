@@ -7,7 +7,10 @@ const app = express();
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: [
+    'http://localhost:3000',
+    'https://focus-tracker-nu.vercel.app/'  // your real vercel URL here
+  ],
   credentials: true,
 }));
 app.use(express.json());
