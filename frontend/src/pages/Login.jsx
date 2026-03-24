@@ -26,15 +26,14 @@ export default function Login() {
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        {/* Logo */}
-        <div style={styles.logo}>
-          <span style={styles.logoDot} />
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-logo">
+          <span className="brand-dot" />
           FocusTracker
         </div>
-        <h2 style={styles.title}>Welcome back</h2>
-        <p style={styles.subtitle}>Sign in to your account</p>
+        <h2 className="auth-title">Welcome back</h2>
+        <p className="auth-subtitle">Sign in to your account</p>
 
         {error && <div className="alert alert-error">⚠️ {error}</div>}
 
@@ -74,69 +73,11 @@ export default function Login() {
           </button>
         </form>
 
-        <p style={styles.switchText}>
+        <p className="auth-switch">
           Don't have an account?{' '}
-          <Link to="/register" style={styles.link}>Create one</Link>
+          <Link to="/register" className="auth-link">Create one</Link>
         </p>
       </div>
     </div>
   );
 }
-
-const styles = {
-  page: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '24px',
-    background: 'var(--bg)',
-  },
-  card: {
-    width: '100%',
-    maxWidth: '420px',
-    background: 'var(--card)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius)',
-    padding: '40px',
-  },
-  logo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    fontWeight: 800,
-    fontSize: '1.2rem',
-    marginBottom: '32px',
-    color: 'var(--text)',
-  },
-  logoDot: {
-    display: 'inline-block',
-    width: '10px',
-    height: '10px',
-    borderRadius: '50%',
-    background: 'var(--accent)',
-    boxShadow: '0 0 12px var(--accent)',
-  },
-  title: {
-    fontSize: '1.5rem',
-    fontWeight: 800,
-    marginBottom: '6px',
-    letterSpacing: '-0.02em',
-  },
-  subtitle: {
-    color: 'var(--text2)',
-    fontSize: '0.9rem',
-    marginBottom: '28px',
-  },
-  switchText: {
-    textAlign: 'center',
-    marginTop: '24px',
-    color: 'var(--text2)',
-    fontSize: '0.875rem',
-  },
-  link: {
-    color: 'var(--accent)',
-    textDecoration: 'none',
-    fontWeight: 600,
-  },
-};

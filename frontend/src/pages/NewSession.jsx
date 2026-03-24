@@ -51,7 +51,7 @@ export default function NewSession() {
 
           <div className="form-group">
             <label className="form-label">Category</label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px' }}>
+            <div className="category-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px' }}>
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat}

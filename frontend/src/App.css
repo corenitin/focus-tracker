@@ -394,3 +394,237 @@ body {
   .navbar-links { gap: 2px; }
   .nav-link span { display: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FULL RESPONSIVE OVERHAUL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Mobile First Base (≤480px) ─────────────────────────────────────────── */
+@media (max-width: 480px) {
+
+  /* Layout */
+  .main-content { padding: 16px 12px; }
+  .page-title { font-size: 1.4rem; }
+  .page-subtitle { font-size: 0.85rem; }
+
+  /* Navbar — compact mobile bar */
+  .navbar-inner { padding: 0 12px; height: 56px; }
+  .navbar-brand { font-size: 1rem; }
+  .brand-dot { width: 8px; height: 8px; }
+  .nav-link { padding: 6px 8px; font-size: 0.78rem; }
+  .nav-link span:last-child { display: none; }
+  .nav-cta { padding: 6px 12px; font-size: 0.78rem; }
+  .nav-cta span { display: none; }
+
+  /* Hide user name on very small screens */
+  .navbar-links > span { display: none; }
+
+  /* Stats grid — 2 columns on mobile */
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .stat-card { padding: 14px 16px; }
+  .stat-icon { font-size: 1.2rem; margin-bottom: 8px; }
+  .stat-value { font-size: 1.35rem; }
+  .stat-label { font-size: 0.72rem; }
+
+  /* Grid — single column */
+  .grid-2 { grid-template-columns: 1fr; gap: 12px; }
+
+  /* Cards */
+  .card { padding: 16px; }
+
+  /* Session cards — stack vertically */
+  .session-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+  .session-card:hover { transform: none; }
+  .session-card > div:last-child {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .session-title { font-size: 0.92rem; }
+  .session-duration { font-size: 1rem; }
+
+  /* Timer ring */
+  .timer-ring { width: 200px; height: 200px; margin-bottom: 24px; }
+  .timer-ring-svg { width: 200px; height: 200px; }
+  .timer-big { font-size: 2.2rem; }
+  .timer-status-text { font-size: 0.72rem; }
+
+  /* Session controls — full width buttons */
+  .session-controls { flex-direction: column; align-items: stretch; gap: 8px; }
+  .session-controls .btn { width: 100%; justify-content: center; }
+
+  /* Buttons */
+  .btn-lg { padding: 13px 20px; font-size: 0.92rem; }
+  .btn { font-size: 0.85rem; padding: 9px 16px; }
+
+  /* Forms */
+  .form-input, .form-select, .form-textarea { font-size: 16px; /* prevent iOS zoom */ }
+
+  /* Filters — scrollable horizontal */
+  .filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .filters::-webkit-scrollbar { display: none; }
+  .filter-chip { white-space: nowrap; flex-shrink: 0; padding: 6px 12px; font-size: 0.78rem; }
+
+  /* Chart */
+  .chart-bars { height: 90px; gap: 4px; }
+  .chart-label { font-size: 0.62rem; }
+
+  /* Auth pages */
+  .auth-card { padding: 28px 20px !important; }
+
+  /* New session category grid */
+  .category-grid { grid-template-columns: 1fr 1fr !important; }
+
+  /* Pagination */
+  .pagination { gap: 8px; }
+
+  /* Empty state */
+  .empty-state { padding: 40px 16px; }
+  .empty-icon { font-size: 2.5rem; }
+}
+
+/* ─── Tablet (481px – 768px) ─────────────────────────────────────────────── */
+@media (min-width: 481px) and (max-width: 768px) {
+
+  .main-content { padding: 20px 16px; }
+  .page-title { font-size: 1.6rem; }
+
+  /* Navbar */
+  .navbar-inner { padding: 0 16px; }
+  .nav-link span:last-child { display: none; }
+  .nav-cta span { display: inline; }
+  .navbar-links > span { display: none; }
+
+  /* Stats — 2x2 grid */
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* Grid */
+  .grid-2 { grid-template-columns: 1fr; gap: 16px; }
+
+  /* Session cards */
+  .session-card { flex-wrap: wrap; gap: 10px; }
+  .session-card:hover { transform: none; }
+
+  /* Timer */
+  .timer-ring { width: 240px; height: 240px; }
+  .timer-ring-svg { width: 240px; height: 240px; }
+  .timer-big { font-size: 2.8rem; }
+
+  /* Forms */
+  .form-input, .form-select, .form-textarea { font-size: 16px; }
+
+  /* Filters */
+  .filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .filters::-webkit-scrollbar { display: none; }
+  .filter-chip { white-space: nowrap; flex-shrink: 0; }
+}
+
+/* ─── Small Desktop (769px – 1024px) ─────────────────────────────────────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .main-content { padding: 24px 20px; }
+  .stats-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ─── Touch device improvements ──────────────────────────────────────────── */
+@media (hover: none) and (pointer: coarse) {
+
+  /* Bigger tap targets */
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 36px; }
+  .nav-link { min-height: 44px; }
+  .filter-chip { min-height: 36px; }
+
+  /* Remove hover transforms on touch */
+  .session-card:hover { transform: none; border-color: var(--border); }
+  .stat-card:hover { transform: none; }
+  .btn-primary:hover { transform: none; }
+  .btn-success:hover { transform: none; }
+  .nav-cta:hover { transform: none; }
+}
+
+/* ─── Fix iOS Safari 100vh issue ──────────────────────────────────────────── */
+@supports (-webkit-touch-callout: none) {
+  .auth-page { min-height: -webkit-fill-available; }
+}
+
+/* ─── Auth Pages ─────────────────────────────────────────────────────────────── */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 40px;
+}
+
+.auth-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 1.2rem;
+  margin-bottom: 32px;
+  color: var(--text);
+}
+
+.auth-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+  letter-spacing: -0.02em;
+}
+
+.auth-subtitle {
+  color: var(--text2);
+  font-size: 0.9rem;
+  margin-bottom: 28px;
+}
+
+.auth-switch {
+  text-align: center;
+  margin-top: 24px;
+  color: var(--text2);
+  font-size: 0.875rem;
+}
+
+.auth-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 28px 20px;
+    border-radius: var(--radius);
+  }
+  .auth-title { font-size: 1.3rem; }
+  .auth-logo { font-size: 1rem; margin-bottom: 24px; }
+  .auth-subtitle { margin-bottom: 20px; }
+}
