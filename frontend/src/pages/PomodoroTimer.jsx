@@ -118,6 +118,8 @@ export default function PomodoroTimer() {
   const [sessionId, setSessionId]  = useState(null);
   const [sessionTitle, setTitle]   = useState('Focus Session');
   const [sessionCat, setCat]       = useState('Study');
+  const [customCatInput, setCustomCatInput] = useState('');
+  const [showCustomCat, setShowCustomCat]   = useState(false);
   const [completedRounds, setDone] = useState(0);
   const [totalFocusSecs, setTotal] = useState(0);
   const [activeTab, setTab]        = useState('presets');
@@ -187,8 +189,14 @@ export default function PomodoroTimer() {
     return () => clearInterval(intervalRef.current);
   }, [running, playBeep]);
 
+  // Use a ref to track running state inside the transition effect
+  const runningRef = useRef(false);
+  useEffect(() => { runningRef.current = running; }, [running]);
+
   useEffect(() => {
+    // Only transition when timer actually counted down while running
     if (secondsLeft !== 0 || phase === 'idle' || phase === 'done') return;
+    if (!runningRef.current) return; // ← FIX: don't transition when paused
     const currFocusSecs = hmsToSecs(cfg.focusH, cfg.focusM, cfg.focusS);
     if (phase === 'focus') {
       const isLast = round >= totalRounds;
@@ -232,6 +240,19 @@ export default function PomodoroTimer() {
     }
     setSessionId(null); setPhase('idle'); setRound(1);
     setSecsLeft(focusSecs); setDone(0); setTotal(0);
+  };
+
+  // Complete session early (when paused or mid-session)
+  const handleComplete = async () => {
+    stopTimer();
+    const elapsed = totalFocusSecs + (phase === 'focus' ? focusSecs - secondsLeft : 0);
+    if (sessionId) {
+      try { await completeSession(sessionId, { notes: `Completed early: ${completedRounds}/${totalRounds} rounds` }); } catch {}
+    }
+    setTotal(elapsed);
+    setPhase('done');
+    setSecsLeft(0);
+    setSessionId(null);
   };
 
   const handleSkip = () => {
@@ -413,10 +434,45 @@ export default function PomodoroTimer() {
                 </div>
                 <div>
                   <label className="form-label">Category</label>
-                  <select className="form-select" value={sessionCat}
-                    disabled={phase !== 'idle'} onChange={e => setCat(e.target.value)}>
-                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                  <select className="form-select" value={showCustomCat ? '__custom__' : sessionCat}
+                    disabled={phase !== 'idle'}
+                    onChange={e => {
+                      if (e.target.value === '__custom__') { setShowCustomCat(true); }
+                      else { setShowCustomCat(false); setCat(e.target.value); }
+                    }}>
+                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    <option value="__custom__">+ Add Custom...</option>
                   </select>
+                  {showCustomCat && (
+                    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                      <input
+                        className="form-input"
+                        placeholder="Enter category name"
+                        value={customCatInput}
+                        disabled={phase !== 'idle'}
+                        onChange={e => setCustomCatInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && customCatInput.trim()) {
+                            setCat(customCatInput.trim());
+                            setShowCustomCat(false);
+                            setCustomCatInput('');
+                          }
+                        }}
+                        style={{ fontSize: '0.875rem', padding: '8px 12px' }}
+                      />
+                      <button type="button" className="btn btn-primary btn-sm"
+                        disabled={!customCatInput.trim() || phase !== 'idle'}
+                        onClick={() => {
+                          if (customCatInput.trim()) {
+                            setCat(customCatInput.trim());
+                            setShowCustomCat(false);
+                            setCustomCatInput('');
+                          }
+                        }}>
+                        <span className="mi mi-sm">check</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -491,6 +547,12 @@ export default function PomodoroTimer() {
               {phase !== 'idle' && phase !== 'done' && (
                 <button type="button" className="btn btn-ghost btn-lg" onClick={handleSkip}>
                   <span className="mi">skip_next</span> Skip
+                </button>
+              )}
+              {/* Complete early — shown when paused or active (not idle/done) */}
+              {phase !== 'idle' && phase !== 'done' && !running && (
+                <button type="button" className="btn btn-success btn-lg" onClick={handleComplete}>
+                  <span className="mi">check_circle</span> Complete
                 </button>
               )}
               {phase !== 'idle' && (

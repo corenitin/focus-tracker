@@ -62,7 +62,7 @@ function DonutChart({ data }) {
   };
 
   return (
-    <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', overflow: 'hidden', minWidth: 0 }}>
       <svg width={200} height={200} viewBox="0 0 200 200" style={{ flexShrink: 0 }}>
         {slices.length > 0 ? slices.map((s, i) => (
           <path key={i} d={describePath(s)} fill={s.color} opacity={0.85}>
@@ -130,8 +130,8 @@ function Heatmap({ data }) {
   const days   = ['S','M','T','W','T','F','S'];
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <div style={{ display: 'flex', gap: 2, minWidth: 'max-content' }}>
+    <div style={{ overflowX: 'auto', overflowY: 'hidden', width: '100%', maxWidth: '100%' }}>
+      <div style={{ display: 'inline-flex', gap: 2 }}>
         {/* Day labels */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 4 }}>
           <div style={{ height: 14 }} />

@@ -6,6 +6,8 @@ import { CATEGORIES, CAT_ICONS } from '../utils';
 export default function NewSession() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ title: '', category: 'Study', notes: '' });
+  const [customCatInput, setCustomCatInput] = useState('');
+  const [showCustomCat, setShowCustomCat]   = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -51,31 +53,81 @@ export default function NewSession() {
           <div className="form-group">
             <label className="form-label">Category</label>
             <div className="category-grid">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setForm((f) => ({ ...f, category: cat }))}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: 'var(--radius2)',
-                    border: `1px solid ${form.category === cat ? 'var(--accent)' : 'var(--border)'}`,
-                    background: form.category === cat ? 'var(--accent-glow2)' : 'transparent',
-                    color: form.category === cat ? 'var(--accent)' : 'var(--text2)',
-                    fontFamily: 'Poppins, sans-serif',
-                    fontWeight: 500,
-                    fontSize: '0.83rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <span className="mi mi-sm">{CAT_ICONS[cat]}</span> {cat}
-                </button>
-              ))}
+              {[...CATEGORIES, '__custom__'].map((cat) => {
+                const isCustom = cat === '__custom__';
+                const isActive = isCustom ? showCustomCat : form.category === cat && !showCustomCat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => {
+                      if (isCustom) { setShowCustomCat(true); }
+                      else { setShowCustomCat(false); setForm(f => ({ ...f, category: cat })); }
+                    }}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius2)',
+                      border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}`,
+                      background: isActive ? 'var(--accent-glow2)' : 'transparent',
+                      color: isActive ? 'var(--accent)' : 'var(--text2)',
+                      fontFamily: 'Poppins, sans-serif',
+                      fontWeight: 500,
+                      fontSize: '0.83rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <span className="mi mi-sm">{isCustom ? 'add' : CAT_ICONS[cat]}</span>
+                    {isCustom ? 'Custom' : cat}
+                  </button>
+                );
+              })}
             </div>
+            {showCustomCat && (
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <input
+                  className="form-input"
+                  placeholder="Enter your category name..."
+                  value={customCatInput}
+                  onChange={e => setCustomCatInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && customCatInput.trim()) {
+                      setForm(f => ({ ...f, category: customCatInput.trim() }));
+                      setShowCustomCat(false);
+                      setCustomCatInput('');
+                    }
+                  }}
+                  autoFocus
+                />
+                <button type="button" className="btn btn-primary"
+                  disabled={!customCatInput.trim()}
+                  onClick={() => {
+                    if (customCatInput.trim()) {
+                      setForm(f => ({ ...f, category: customCatInput.trim() }));
+                      setShowCustomCat(false);
+                      setCustomCatInput('');
+                    }
+                  }}>
+                  <span className="mi mi-sm">check</span>
+                </button>
+                <button type="button" className="btn btn-ghost"
+                  onClick={() => { setShowCustomCat(false); setCustomCatInput(''); }}>
+                  <span className="mi mi-sm">close</span>
+                </button>
+              </div>
+            )}
+            {form.category && !CATEGORIES.includes(form.category) && !showCustomCat && (
+              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--accent-glow2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                <span className="mi mi-sm" style={{ color: 'var(--accent)' }}>label</span>
+                <span style={{ fontSize: '0.82rem', color: 'var(--text2)' }}>Custom: </span>
+                <span style={{ fontSize: '0.82rem', color: 'var(--accent)', fontWeight: 600 }}>{form.category}</span>
+                <button type="button" onClick={() => setForm(f => ({ ...f, category: 'Study' }))}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontFamily: 'Material Icons Round', fontSize: 16 }}>close</button>
+              </div>
+            )}
           </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
