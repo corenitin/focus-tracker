@@ -1,12 +1,29 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createSession, completeSession } from '../api';
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const pad = (n) => String(Math.max(0, n)).padStart(2, '0');
+
+function formatSecs(s) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${pad(h)}:${pad(m)}:${pad(sec)}`;
+  return `${pad(m)}:${pad(sec)}`;
+}
+
+function hmsToSecs(h, m, s) {
+  return (parseInt(h) || 0) * 3600 + (parseInt(m) || 0) * 60 + (parseInt(s) || 0);
+}
+
 const PRESETS = [
-  { label: 'Classic Pomodoro', focus: 25, short: 5,  long: 15, rounds: 4 },
-  { label: 'Deep Work',        focus: 50, short: 10, long: 20, rounds: 4 },
-  { label: 'Short Burst',      focus: 15, short: 3,  long: 10, rounds: 6 },
-  { label: 'Custom',           focus: 25, short: 5,  long: 15, rounds: 4 },
+  { label: 'Classic Pomodoro', focusH:0, focusM:25, focusS:0, shortH:0, shortM:5,  shortS:0, longH:0, longM:15, longS:0, rounds:4 },
+  { label: 'Deep Work',        focusH:0, focusM:50, focusS:0, shortH:0, shortM:10, shortS:0, longH:0, longM:20, longS:0, rounds:4 },
+  { label: 'Short Burst',      focusH:0, focusM:15, focusS:0, shortH:0, shortM:3,  shortS:0, longH:0, longM:10, longS:0, rounds:6 },
+  { label: '2 Hour Block',     focusH:2, focusM:0,  focusS:0, shortH:0, shortM:15, shortS:0, longH:0, longM:30, longS:0, rounds:2 },
 ];
+
+const CUSTOM_DEFAULT = { focusH:0, focusM:25, focusS:0, shortH:0, shortM:5, shortS:0, longH:0, longM:15, longS:0, rounds:4 };
 
 const PHASES = {
   idle:       { label: 'Ready',       color: 'var(--text2)',  icon: 'timer' },
@@ -16,58 +33,129 @@ const PHASES = {
   done:       { label: 'All Done!',   color: 'var(--yellow)', icon: 'emoji_events' },
 };
 
-function pad(n) { return String(n).padStart(2, '0'); }
-function formatSecs(s) { return `${pad(Math.floor(s / 60))}:${pad(s % 60)}`; }
+const CATEGORIES = ['Study','Work','Reading','Coding','Exercise','Meditation','Other'];
 
+// ─── Single field spinner ─────────────────────────────────────────────────────
+function SpinField({ value, max, label, onChange, disabled }) {
+  const inc = () => onChange(value >= max ? 0 : value + 1);
+  const dec = () => onChange(value <= 0 ? max : value - 1);
+  const onType = (e) => {
+    const v = parseInt(e.target.value);
+    if (!isNaN(v)) onChange(Math.max(0, Math.min(max, v)));
+  };
+
+  return (
+    <div className="pomo-spin-field">
+      <button
+        className="pomo-spin-btn"
+        disabled={disabled}
+        onClick={inc}
+        type="button"
+      >
+        <span className="mi" style={{ fontSize: 16 }}>expand_less</span>
+      </button>
+      <input
+        className="pomo-spin-input"
+        type="number"
+        min={0}
+        max={max}
+        value={value}
+        disabled={disabled}
+        onChange={onType}
+        onFocus={e => e.target.select()}
+      />
+      <button
+        className="pomo-spin-btn"
+        disabled={disabled}
+        onClick={dec}
+        type="button"
+      >
+        <span className="mi" style={{ fontSize: 16 }}>expand_more</span>
+      </button>
+      <div className="pomo-spin-label">{label}</div>
+    </div>
+  );
+}
+
+// ─── Time input row (H : M : S) ───────────────────────────────────────────────
+function TimeInput({ h, m, s, maxH = 23, disabled, onChange }) {
+  const set = (field, val) => onChange({ h, m, s, [field]: val });
+  return (
+    <div className="pomo-time-row">
+      <SpinField value={h} max={maxH} label="HR"  disabled={disabled} onChange={v => set('h', v)} />
+      <div className="pomo-colon">:</div>
+      <SpinField value={m} max={59}   label="MIN" disabled={disabled} onChange={v => set('m', v)} />
+      <div className="pomo-colon">:</div>
+      <SpinField value={s} max={59}   label="SEC" disabled={disabled} onChange={v => set('s', v)} />
+    </div>
+  );
+}
+
+// ─── Config row ───────────────────────────────────────────────────────────────
+function ConfigRow({ icon, iconColor, title, subtitle, children }) {
+  return (
+    <div className="pomo-config-row">
+      <div className="pomo-config-left">
+        <span className="mi mi-sm" style={{ color: iconColor }}>{icon}</span>
+        <div>
+          <div className="pomo-config-title">{title}</div>
+          {subtitle && <div className="pomo-config-sub">{subtitle}</div>}
+        </div>
+      </div>
+      <div className="pomo-config-right">{children}</div>
+    </div>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function PomodoroTimer() {
-  const [presetIdx, setPresetIdx]   = useState(0);
-  const [custom, setCustom]         = useState({ focus: 25, short: 5, long: 15, rounds: 4 });
-  const [phase, setPhase]           = useState('idle');
-  const [round, setRound]           = useState(1);
-  const [secondsLeft, setSecsLeft]  = useState(25 * 60);
-  const [running, setRunning]       = useState(false);
-  const [sessionId, setSessionId]   = useState(null);
-  const [sessionTitle, setTitle]    = useState('Focus Session');
-  const [sessionCategory, setCat]   = useState('Study');
-  const [completedRounds, setDone]  = useState(0);
-  const [totalFocusSecs, setTotal]  = useState(0);
-  const [showSettings, setSettings] = useState(false);
-  const [notifEnabled, setNotif]    = useState(false);
+  const [presetIdx, setPresetIdx]  = useState(0);
+  const [custom, setCustom]        = useState({ ...CUSTOM_DEFAULT });
+  const [phase, setPhase]          = useState('idle');
+  const [round, setRound]          = useState(1);
+  const [secondsLeft, setSecsLeft] = useState(hmsToSecs(0,25,0));
+  const [running, setRunning]      = useState(false);
+  const [sessionId, setSessionId]  = useState(null);
+  const [sessionTitle, setTitle]   = useState('Focus Session');
+  const [sessionCat, setCat]       = useState('Study');
+  const [completedRounds, setDone] = useState(0);
+  const [totalFocusSecs, setTotal] = useState(0);
+  const [activeTab, setTab]        = useState('presets');
+  const [notifEnabled, setNotif]   = useState(false);
   const intervalRef = useRef(null);
-  const audioRef    = useRef(null);
 
-  const cfg = presetIdx === 3 ? custom : PRESETS[presetIdx];
-  const totalRounds = cfg.rounds;
+  const cfg = activeTab === 'custom' ? custom : PRESETS[presetIdx];
+  const focusSecs = hmsToSecs(cfg.focusH, cfg.focusM, cfg.focusS);
+  const shortSecs = hmsToSecs(cfg.shortH, cfg.shortM, cfg.shortS);
+  const longSecs  = hmsToSecs(cfg.longH,  cfg.longM,  cfg.longS);
+  const totalRounds = parseInt(cfg.rounds) || 1;
+  const isValid = focusSecs >= 1;
 
-  // Request notification permission
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'granted') setNotif(true);
   }, []);
 
   const requestNotif = async () => {
     if ('Notification' in window) {
-      const perm = await Notification.requestPermission();
-      setNotif(perm === 'granted');
+      const p = await Notification.requestPermission();
+      setNotif(p === 'granted');
     }
   };
 
   const notify = useCallback((title, body) => {
-    if (notifEnabled && 'Notification' in window) {
-      new Notification(title, { body, icon: '/favicon.ico' });
-    }
+    if (notifEnabled && 'Notification' in window) new Notification(title, { body });
   }, [notifEnabled]);
 
-  const playBeep = useCallback(() => {
+  const playBeep = useCallback((freq = 880) => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = 880;
+      osc.frequency.value = freq;
       gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.5);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+      osc.start(); osc.stop(ctx.currentTime + 0.6);
     } catch {}
   }, []);
 
@@ -77,61 +165,56 @@ export default function PomodoroTimer() {
     setRunning(false);
   }, []);
 
-  const goToPhase = useCallback((nextPhase, nextRound, focusDone) => {
+  const goToPhase = useCallback((nextPhase, nextRound, focusDone, focusElapsed = 0) => {
     stopTimer();
     setPhase(nextPhase);
     setRound(nextRound);
-    if (nextPhase === 'focus')      setSecsLeft(cfg.focus * 60);
-    if (nextPhase === 'shortBreak') setSecsLeft(cfg.short * 60);
-    if (nextPhase === 'longBreak')  setSecsLeft(cfg.long  * 60);
+    if (nextPhase === 'focus')      setSecsLeft(hmsToSecs(cfg.focusH, cfg.focusM, cfg.focusS));
+    if (nextPhase === 'shortBreak') setSecsLeft(hmsToSecs(cfg.shortH, cfg.shortM, cfg.shortS));
+    if (nextPhase === 'longBreak')  setSecsLeft(hmsToSecs(cfg.longH,  cfg.longM,  cfg.longS));
     if (nextPhase === 'done')       setSecsLeft(0);
-    if (focusDone) setDone(d => d + 1);
+    if (focusDone) { setDone(d => d + 1); setTotal(t => t + focusElapsed); }
   }, [cfg, stopTimer]);
 
-  // Tick
   useEffect(() => {
     if (!running) return;
     intervalRef.current = setInterval(() => {
       setSecsLeft(s => {
-        if (s <= 1) {
-          clearInterval(intervalRef.current);
-          playBeep();
-          return 0;
-        }
+        if (s <= 1) { clearInterval(intervalRef.current); playBeep(); return 0; }
         return s - 1;
       });
     }, 1000);
     return () => clearInterval(intervalRef.current);
   }, [running, playBeep]);
 
-  // Phase transition when timer hits 0
   useEffect(() => {
     if (secondsLeft !== 0 || phase === 'idle' || phase === 'done') return;
-    if (!running && phase !== 'focus' && phase !== 'shortBreak' && phase !== 'longBreak') return;
-
+    const currFocusSecs = hmsToSecs(cfg.focusH, cfg.focusM, cfg.focusS);
     if (phase === 'focus') {
-      setTotal(t => t + cfg.focus * 60);
-      const isLastRound = round >= totalRounds;
-      if (isLastRound) {
-        notify('🎉 All rounds complete!', `You focused for ${cfg.focus * totalRounds} minutes!`);
-        goToPhase('done', round, true);
-      } else {
-        const isLongBreak = round % 4 === 0;
-        notify('✅ Focus done!', isLongBreak ? `Time for a long break (${cfg.long} min)` : `Short break time! (${cfg.short} min)`);
-        goToPhase(isLongBreak ? 'longBreak' : 'shortBreak', round, true);
+      const isLast = round >= totalRounds;
+      if (isLast) { notify('🎉 All done!', 'Amazing work!'); goToPhase('done', round, true, currFocusSecs); }
+      else {
+        const useLong = round % 4 === 0;
+        notify('✅ Focus done!', useLong ? 'Long break time!' : 'Short break time!');
+        goToPhase(useLong ? 'longBreak' : 'shortBreak', round, true, currFocusSecs);
       }
     } else if (phase === 'shortBreak' || phase === 'longBreak') {
-      notify('⏱ Break over!', 'Time to focus again!');
+      notify('⏱ Break over!', 'Back to focus!');
+      playBeep(660);
       goToPhase('focus', round + 1, false);
       setRunning(true);
     }
-  }, [secondsLeft, phase, round, totalRounds, cfg, goToPhase, notify, running]);
+  }, [secondsLeft, phase, round, totalRounds, cfg, goToPhase, notify, playBeep]);
+
+  useEffect(() => {
+    if (phase === 'idle') setSecsLeft(hmsToSecs(cfg.focusH, cfg.focusM, cfg.focusS));
+  }, [cfg, phase]);
 
   const handleStart = async () => {
+    if (!isValid) return;
     if (phase === 'idle' || phase === 'done') {
-      // Create a backend session
       try {
-        const res = await createSession({ title: sessionTitle, category: sessionCategory, notes: `Pomodoro: ${cfg.focus}min focus × ${totalRounds} rounds` });
+        const res = await createSession({ title: sessionTitle, category: sessionCat, notes: `Timer: ${formatSecs(focusSecs)} × ${totalRounds} rounds` });
         setSessionId(res.data.data._id);
       } catch {}
       setDone(0); setTotal(0); setRound(1);
@@ -145,221 +228,608 @@ export default function PomodoroTimer() {
   const handleReset = async () => {
     stopTimer();
     if (sessionId && totalFocusSecs > 0) {
-      try { await completeSession(sessionId, { notes: `Pomodoro completed: ${completedRounds}/${totalRounds} rounds` }); } catch {}
+      try { await completeSession(sessionId, { notes: `Completed: ${completedRounds}/${totalRounds} rounds` }); } catch {}
     }
     setSessionId(null); setPhase('idle'); setRound(1);
-    setSecsLeft(cfg.focus * 60); setDone(0); setTotal(0);
+    setSecsLeft(focusSecs); setDone(0); setTotal(0);
   };
 
   const handleSkip = () => {
+    const elapsed = phase === 'focus' ? focusSecs - secondsLeft : 0;
     if (phase === 'focus') {
-      setTotal(t => t + (cfg.focus * 60 - secondsLeft));
-      const isLastRound = round >= totalRounds;
-      if (isLastRound) goToPhase('done', round, true);
-      else goToPhase(round % 4 === 0 ? 'longBreak' : 'shortBreak', round, true);
+      const isLast = round >= totalRounds;
+      if (isLast) goToPhase('done', round, true, elapsed);
+      else goToPhase(round % 4 === 0 ? 'longBreak' : 'shortBreak', round, true, elapsed);
     } else if (phase === 'shortBreak' || phase === 'longBreak') {
       goToPhase('focus', round + 1, false);
       setRunning(true);
     }
   };
 
-  // Sync timer when preset changes
-  useEffect(() => {
-    if (phase === 'idle') setSecsLeft(cfg.focus * 60);
-  }, [cfg, phase]);
-
   const phaseInfo = PHASES[phase];
-  const totalSecs = phase === 'focus' ? cfg.focus * 60 : phase === 'shortBreak' ? cfg.short * 60 : cfg.long * 60;
-  const pct = phase === 'idle' || phase === 'done' ? 0 : ((totalSecs - secondsLeft) / totalSecs) * 100;
+  const totalSecs = phase === 'focus' ? focusSecs : phase === 'shortBreak' ? shortSecs : longSecs;
+  const pct = (phase === 'idle' || phase === 'done' || totalSecs === 0)
+    ? 0
+    : ((totalSecs - secondsLeft) / totalSecs) * 100;
   const circumference = 2 * Math.PI * 110;
   const dashOffset = circumference - (pct / 100) * circumference;
 
-  const CATEGORIES = ['Study','Work','Reading','Coding','Exercise','Meditation','Other'];
-
   return (
-    <div style={{ maxWidth: 680, margin: '0 auto' }}>
-      <div className="page-header">
-        <h1 className="page-title">Focus Timer</h1>
-        <p className="page-subtitle">Structured focus sessions with timed breaks.</p>
-      </div>
+    <>
+      {/* Inject responsive styles */}
+      <style>{pomoCss}</style>
 
-      {/* ── Preset Tabs ── */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
-        {PRESETS.map((p, i) => (
-          <button key={i} disabled={phase !== 'idle'} onClick={() => { setPresetIdx(i); }}
-            style={{
-              padding: '8px 16px', borderRadius: 99, border: '1px solid var(--border)',
-              background: presetIdx === i ? 'var(--accent)' : 'transparent',
-              color: presetIdx === i ? '#000' : 'var(--text2)',
-              fontFamily: 'Poppins,sans-serif', fontWeight: 600, fontSize: '0.8rem',
-              cursor: phase !== 'idle' ? 'not-allowed' : 'pointer', opacity: phase !== 'idle' ? 0.6 : 1,
-              transition: 'all 0.2s',
-            }}>{p.label}</button>
-        ))}
-        <button onClick={() => setSettings(s => !s)} style={{
-          padding: '8px 12px', borderRadius: 99, border: '1px solid var(--border)',
-          background: showSettings ? 'var(--card2)' : 'transparent',
-          color: 'var(--text2)', fontFamily: 'Material Icons Round', fontSize: 18, cursor: 'pointer',
-        }}>settings</button>
-      </div>
-
-      {/* ── Custom Settings Panel ── */}
-      {(presetIdx === 3 || showSettings) && (
-        <div className="card" style={{ marginBottom: 24 }}>
-          <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="mi mi-sm">tune</span> Timer Settings
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 16 }}>
-            {[
-              { label: 'Focus (min)', key: 'focus', min: 5, max: 120 },
-              { label: 'Short Break (min)', key: 'short', min: 1, max: 30 },
-              { label: 'Long Break (min)', key: 'long', min: 5, max: 60 },
-              { label: 'Rounds', key: 'rounds', min: 1, max: 12 },
-            ].map(({ label, key, min, max }) => (
-              <div key={key}>
-                <label className="form-label">{label}</label>
-                <input type="number" min={min} max={max}
-                  className="form-input"
-                  disabled={phase !== 'idle'}
-                  value={presetIdx === 3 ? custom[key] : cfg[key]}
-                  onChange={e => {
-                    if (presetIdx !== 3) { setPresetIdx(3); }
-                    setCustom(c => ({ ...c, [key]: parseInt(e.target.value) || min }));
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-
-          {/* Session info */}
-          <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <label className="form-label">Session Title</label>
-              <input className="form-input" value={sessionTitle} onChange={e => setTitle(e.target.value)} disabled={phase !== 'idle'} />
-            </div>
-            <div>
-              <label className="form-label">Category</label>
-              <select className="form-select" value={sessionCategory} onChange={e => setCat(e.target.value)} disabled={phase !== 'idle'}>
-                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Notification toggle */}
-          <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button onClick={requestNotif} style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)',
-              background: notifEnabled ? 'var(--green-glow)' : 'transparent',
-              color: notifEnabled ? 'var(--green)' : 'var(--text2)',
-              fontFamily: 'Poppins,sans-serif', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer',
-            }}>
-              <span className="mi mi-sm">{notifEnabled ? 'notifications_active' : 'notifications'}</span>
-              {notifEnabled ? 'Notifications ON' : 'Enable Notifications'}
-            </button>
-          </div>
+      <div className="pomo-page">
+        <div className="page-header">
+          <h1 className="page-title">Focus Timer</h1>
+          <p className="page-subtitle">Custom sessions with structured breaks. Set hours, minutes and seconds.</p>
         </div>
-      )}
 
-      {/* ── Timer Ring ── */}
-      <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <div style={{ position: 'relative', width: 280, height: 280, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg style={{ position: 'absolute', top: 0, left: 0, transform: 'rotate(-90deg)' }} width={280} height={280} viewBox="0 0 280 280">
-            <circle fill="none" stroke="var(--border)" strokeWidth={6} cx={140} cy={140} r={110} />
-            <circle fill="none" stroke={phaseInfo.color} strokeWidth={6} strokeLinecap="round"
-              cx={140} cy={140} r={110}
-              strokeDasharray={circumference}
-              strokeDashoffset={phase === 'idle' || phase === 'done' ? circumference : dashOffset}
-              style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.4s' }}
-            />
-          </svg>
-          <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-            {/* Phase icon */}
-            <div style={{ marginBottom: 4 }}>
-              <span className="mi" style={{ fontSize: 28, color: phaseInfo.color }}>{phaseInfo.icon}</span>
+        <div className="pomo-layout">
+
+          {/* ── LEFT: Config panel ── */}
+          <div className="pomo-config-panel">
+
+            {/* Mode tabs */}
+            <div className="pomo-tabs">
+              {[
+                { id: 'presets', icon: 'tune',  label: 'Presets'      },
+                { id: 'custom',  icon: 'edit',  label: 'Custom Timer' },
+              ].map(t => (
+                <button key={t.id} type="button"
+                  disabled={phase !== 'idle'}
+                  onClick={() => setTab(t.id)}
+                  className={`pomo-tab ${activeTab === t.id ? 'active' : ''} ${phase !== 'idle' ? 'disabled' : ''}`}
+                >
+                  <span className="mi mi-sm">{t.icon}</span>
+                  {t.label}
+                </button>
+              ))}
             </div>
-            <div style={{ fontFamily: 'JetBrains Mono,monospace', fontSize: '3.5rem', fontWeight: 300, letterSpacing: '-0.02em', color: phase === 'idle' ? 'var(--text2)' : phaseInfo.color, lineHeight: 1 }}>
-              {formatSecs(secondsLeft)}
-            </div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: 8, color: phaseInfo.color }}>
-              {phaseInfo.label}
-            </div>
-            {phase !== 'idle' && phase !== 'done' && (
-              <div style={{ fontSize: '0.72rem', color: 'var(--text3)', marginTop: 4 }}>
-                Round {Math.min(round, totalRounds)} of {totalRounds}
+
+            {/* ── Presets ── */}
+            {activeTab === 'presets' && (
+              <div className="card pomo-card">
+                <div className="pomo-card-title">
+                  <span className="mi mi-sm" style={{ color: 'var(--accent)' }}>tune</span>
+                  Choose a Preset
+                </div>
+                <div className="pomo-presets-grid">
+                  {PRESETS.map((p, i) => (
+                    <button key={i} type="button"
+                      disabled={phase !== 'idle'}
+                      onClick={() => setPresetIdx(i)}
+                      className={`pomo-preset-card ${presetIdx === i ? 'active' : ''} ${phase !== 'idle' ? 'disabled' : ''}`}
+                    >
+                      <div className="pomo-preset-name">{p.label}</div>
+                      <div className="pomo-preset-time">
+                        {formatSecs(hmsToSecs(p.focusH, p.focusM, p.focusS))} focus
+                      </div>
+                      <div className="pomo-preset-detail">
+                        {p.rounds} rounds · {formatSecs(hmsToSecs(p.shortH, p.shortM, p.shortS))} break
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Round indicators */}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 20 }}>
-          {Array.from({ length: totalRounds }).map((_, i) => (
-            <div key={i} style={{
-              width: 10, height: 10, borderRadius: '50%',
-              background: i < completedRounds ? 'var(--green)' : i === round - 1 && phase === 'focus' ? 'var(--accent)' : 'var(--border)',
-              transition: 'background 0.3s',
-              boxShadow: i < completedRounds ? '0 0 6px var(--green)' : 'none',
-            }} />
-          ))}
-        </div>
-      </div>
+            {/* ── Custom timer ── */}
+            {activeTab === 'custom' && (
+              <div className="card pomo-card">
+                <div className="pomo-card-title">
+                  <span className="mi mi-sm" style={{ color: 'var(--accent)' }}>edit</span>
+                  Set Your Own Timer
+                </div>
+                <p className="pomo-hint">
+                  Use arrows or type directly. Supports hours, minutes and seconds.
+                </p>
 
-      {/* ── Controls ── */}
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 32 }}>
-        {phase !== 'done' && (
-          <button className={`btn btn-lg ${phase === 'idle' ? 'btn-success' : running ? 'btn-warning' : 'btn-primary'}`}
-            onClick={handleStart} style={{ minWidth: 140 }}>
-            <span className="mi">{phase === 'idle' ? 'play_arrow' : running ? 'pause' : 'play_arrow'}</span>
-            {phase === 'idle' ? 'Start' : running ? 'Pause' : 'Resume'}
-          </button>
-        )}
-        {phase !== 'idle' && phase !== 'done' && (
-          <button className="btn btn-ghost btn-lg" onClick={handleSkip}>
-            <span className="mi">skip_next</span> Skip
-          </button>
-        )}
-        {phase !== 'idle' && (
-          <button className="btn btn-danger btn-lg" onClick={handleReset}>
-            <span className="mi">restart_alt</span>
-            {phase === 'done' ? 'New Session' : 'Reset'}
-          </button>
-        )}
-      </div>
+                <ConfigRow icon="psychology" iconColor="var(--accent)" title="Focus Duration">
+                  <TimeInput
+                    h={custom.focusH} m={custom.focusM} s={custom.focusS}
+                    maxH={23} disabled={phase !== 'idle'}
+                    onChange={v => setCustom(c => ({ ...c, focusH:v.h, focusM:v.m, focusS:v.s }))}
+                  />
+                  {focusSecs < 1 && (
+                    <div className="pomo-error">⚠ Set at least 1 second</div>
+                  )}
+                </ConfigRow>
 
-      {/* ── Session Summary ── */}
-      {(totalFocusSecs > 0 || phase === 'done') && (
-        <div className="card accent-card" style={{ marginBottom: 16 }}>
-          <h3 style={{ fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="mi mi-sm" style={{ color: 'var(--accent)' }}>summarize</span>
-            Session Progress
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 16 }}>
-            {[
-              { label: 'Focus Time', value: `${Math.floor(totalFocusSecs/60)}m`, icon: 'timer', color: 'var(--accent)' },
-              { label: 'Rounds Done', value: `${completedRounds}/${totalRounds}`, icon: 'check_circle', color: 'var(--green)' },
-              { label: 'Break Time', value: `${completedRounds > 0 ? (completedRounds - (completedRounds % 4 === 0 && completedRounds > 0 ? 1 : 0)) * cfg.short + Math.floor(completedRounds / 4) * cfg.long : 0}m`, icon: 'coffee', color: '#c084fc' },
-            ].map(s => (
-              <div key={s.label} style={{ textAlign: 'center' }}>
-                <span className="mi" style={{ color: s.color, fontSize: 28 }}>{s.icon}</span>
-                <div style={{ fontFamily: 'JetBrains Mono,monospace', fontWeight: 700, fontSize: '1.5rem', color: s.color }}>{s.value}</div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 4 }}>{s.label}</div>
+                <div className="pomo-divider" />
+
+                <ConfigRow icon="coffee" iconColor="var(--green)" title="Short Break" subtitle="After each round">
+                  <TimeInput
+                    h={custom.shortH} m={custom.shortM} s={custom.shortS}
+                    maxH={2} disabled={phase !== 'idle'}
+                    onChange={v => setCustom(c => ({ ...c, shortH:v.h, shortM:v.m, shortS:v.s }))}
+                  />
+                </ConfigRow>
+
+                <div className="pomo-divider" />
+
+                <ConfigRow icon="self_improvement" iconColor="#c084fc" title="Long Break" subtitle="Every 4 rounds">
+                  <TimeInput
+                    h={custom.longH} m={custom.longM} s={custom.longS}
+                    maxH={2} disabled={phase !== 'idle'}
+                    onChange={v => setCustom(c => ({ ...c, longH:v.h, longM:v.m, longS:v.s }))}
+                  />
+                </ConfigRow>
+
+                <div className="pomo-divider" />
+
+                {/* Rounds */}
+                <ConfigRow icon="repeat" iconColor="var(--yellow)" title="Number of Rounds">
+                  <div className="pomo-rounds-row">
+                    <button type="button" className="pomo-round-btn"
+                      disabled={phase !== 'idle' || custom.rounds <= 1}
+                      onClick={() => setCustom(c => ({ ...c, rounds: Math.max(1, c.rounds - 1) }))}>
+                      <span className="mi mi-sm">remove</span>
+                    </button>
+                    <input
+                      type="number" min={1} max={20}
+                      className="pomo-rounds-input"
+                      value={custom.rounds}
+                      disabled={phase !== 'idle'}
+                      onChange={e => setCustom(c => ({ ...c, rounds: Math.max(1, Math.min(20, parseInt(e.target.value) || 1)) }))}
+                    />
+                    <button type="button" className="pomo-round-btn"
+                      disabled={phase !== 'idle' || custom.rounds >= 20}
+                      onClick={() => setCustom(c => ({ ...c, rounds: Math.min(20, c.rounds + 1) }))}>
+                      <span className="mi mi-sm">add</span>
+                    </button>
+                    <span className="pomo-rounds-label">rounds</span>
+                  </div>
+                </ConfigRow>
+
+                {/* Summary */}
+                {isValid && (
+                  <div className="pomo-summary">
+                    <span className="mi mi-sm" style={{ color: 'var(--accent)' }}>info</span>
+                    Total focus: <strong style={{ color: 'var(--accent)' }}>
+                      {formatSecs(focusSecs * custom.rounds)}
+                    </strong>
+                    {shortSecs > 0 && (
+                      <> + <strong style={{ color: 'var(--green)' }}>
+                        {formatSecs((custom.rounds - 1) * shortSecs)} breaks
+                      </strong></>
+                    )}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-          {phase === 'done' && (
-            <div style={{ marginTop: 16, padding: '12px 16px', background: 'var(--green-glow)', borderRadius: 10, textAlign: 'center', color: 'var(--green)', fontWeight: 600, fontSize: '0.9rem' }}>
-              <span className="mi mi-sm">celebration</span> Great work! Session saved to your history.
-            </div>
-          )}
-        </div>
-      )}
+            )}
 
-      {/* ── Tip ── */}
-      <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: '0.8rem', padding: '0 24px' }}>
-        <span className="mi mi-sm" style={{ verticalAlign: 'middle' }}>lightbulb</span>
-        {' '}Tip: The Pomodoro Technique was developed by Francesco Cirillo in the late 1980s. Short breaks refresh your brain between focus intervals.
+            {/* Session info */}
+            <div className="card pomo-card">
+              <div className="pomo-card-title">
+                <span className="mi mi-sm" style={{ color: 'var(--text2)' }}>label</span>
+                Session Info
+              </div>
+              <div className="pomo-session-grid">
+                <div>
+                  <label className="form-label">Title</label>
+                  <input className="form-input" value={sessionTitle}
+                    disabled={phase !== 'idle'} onChange={e => setTitle(e.target.value)} />
+                </div>
+                <div>
+                  <label className="form-label">Category</label>
+                  <select className="form-select" value={sessionCat}
+                    disabled={phase !== 'idle'} onChange={e => setCat(e.target.value)}>
+                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Notification */}
+              <button type="button" onClick={requestNotif} className={`pomo-notif-btn ${notifEnabled ? 'on' : ''}`}>
+                <span className="mi mi-sm">{notifEnabled ? 'notifications_active' : 'notifications'}</span>
+                {notifEnabled ? 'Notifications ON' : 'Enable Notifications'}
+              </button>
+            </div>
+          </div>
+
+          {/* ── RIGHT: Timer ── */}
+          <div className="pomo-timer-panel">
+
+            {/* Ring */}
+            <div className="pomo-ring-wrap">
+              <svg className="pomo-ring-svg" viewBox="0 0 280 280">
+                <circle fill="none" stroke="var(--border)" strokeWidth={6} cx={140} cy={140} r={110} />
+                {pct > 0 && (
+                  <circle fill="none" stroke={phaseInfo.color} strokeWidth={6} strokeLinecap="round"
+                    cx={140} cy={140} r={110}
+                    strokeDasharray={circumference}
+                    strokeDashoffset={dashOffset}
+                    style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.4s', transform: 'rotate(-90deg)', transformOrigin: '140px 140px' }}
+                  />
+                )}
+              </svg>
+              <div className="pomo-ring-center">
+                <span className="mi pomo-phase-icon" style={{ color: phaseInfo.color }}>{phaseInfo.icon}</span>
+                <div className="pomo-timer-digits" style={{ color: phase === 'idle' ? 'var(--text2)' : phaseInfo.color }}>
+                  {formatSecs(secondsLeft)}
+                </div>
+                <div className="pomo-phase-label" style={{ color: phaseInfo.color }}>
+                  {phaseInfo.label}
+                </div>
+                {phase !== 'idle' && phase !== 'done' && (
+                  <div className="pomo-round-info">
+                    Round {Math.min(round, totalRounds)} / {totalRounds}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Round dots */}
+            {totalRounds <= 20 && (
+              <div className="pomo-dots">
+                {Array.from({ length: totalRounds }).map((_, i) => (
+                  <div key={i} className="pomo-dot" style={{
+                    background: i < completedRounds
+                      ? 'var(--green)'
+                      : i === round - 1 && phase === 'focus'
+                      ? 'var(--accent)'
+                      : 'var(--border)',
+                    boxShadow: i < completedRounds ? '0 0 6px var(--green)' : 'none',
+                  }} />
+                ))}
+              </div>
+            )}
+
+            {/* Controls */}
+            <div className="pomo-controls">
+              {phase !== 'done' && (
+                <button type="button"
+                  className={`btn btn-lg pomo-main-btn ${phase === 'idle' ? 'btn-success' : running ? 'btn-warning' : 'btn-primary'}`}
+                  onClick={handleStart}
+                  disabled={!isValid}
+                >
+                  <span className="mi">{phase === 'idle' ? 'play_arrow' : running ? 'pause' : 'play_arrow'}</span>
+                  {phase === 'idle' ? 'Start' : running ? 'Pause' : 'Resume'}
+                </button>
+              )}
+              {phase !== 'idle' && phase !== 'done' && (
+                <button type="button" className="btn btn-ghost btn-lg" onClick={handleSkip}>
+                  <span className="mi">skip_next</span> Skip
+                </button>
+              )}
+              {phase !== 'idle' && (
+                <button type="button" className="btn btn-danger btn-lg" onClick={handleReset}>
+                  <span className="mi">restart_alt</span>
+                  {phase === 'done' ? 'New Session' : 'Reset'}
+                </button>
+              )}
+            </div>
+
+            {/* Progress summary */}
+            {(totalFocusSecs > 0 || phase === 'done') && (
+              <div className="card accent-card pomo-progress">
+                <div className="pomo-card-title">
+                  <span className="mi mi-sm" style={{ color: 'var(--accent)' }}>summarize</span>
+                  Session Progress
+                </div>
+                <div className="pomo-progress-grid">
+                  {[
+                    { label: 'Focus Time',  value: formatSecs(totalFocusSecs),       icon: 'timer',        color: 'var(--accent)' },
+                    { label: 'Rounds Done', value: `${completedRounds}/${totalRounds}`, icon: 'check_circle', color: 'var(--green)' },
+                    { label: 'Rounds Left', value: Math.max(0, totalRounds - completedRounds), icon: 'pending', color: 'var(--text2)' },
+                  ].map(s => (
+                    <div key={s.label} style={{ textAlign: 'center' }}>
+                      <span className="mi" style={{ color: s.color, fontSize: 26 }}>{s.icon}</span>
+                      <div style={{ fontFamily: 'JetBrains Mono,monospace', fontWeight: 700, fontSize: '1.3rem', color: s.color }}>{s.value}</div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 3 }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+                {phase === 'done' && (
+                  <div className="pomo-done-banner">
+                    <span className="mi mi-sm">celebration</span>
+                    Great work! Session saved to your history.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tip */}
+            <p className="pomo-tip">
+              <span className="mi mi-sm" style={{ verticalAlign: 'middle', marginRight: 4 }}>lightbulb</span>
+              Tip: Research shows 52 min focus + 17 min break is the optimal deep work cycle.
+            </p>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
+
+// ─── Component-scoped CSS ─────────────────────────────────────────────────────
+const pomoCss = `
+/* ── Page layout ── */
+.pomo-page { max-width: 1000px; margin: 0 auto; }
+
+.pomo-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* ── Tabs ── */
+.pomo-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  background: var(--bg2);
+  border-radius: 12px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  width: 100%;
+}
+.pomo-tab {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 12px;
+  border-radius: 9px; border: none;
+  background: transparent;
+  color: var(--text2);
+  font-family: Poppins,sans-serif;
+  font-weight: 600; font-size: 0.83rem;
+  cursor: pointer; transition: all 0.2s;
+}
+.pomo-tab.active { background: var(--accent); color: #000; }
+[data-theme="light"] .pomo-tab.active { color: #fff; }
+.pomo-tab.disabled { cursor: not-allowed; opacity: 0.5; }
+.pomo-tab.disabled.active { opacity: 1; }
+
+/* ── Cards ── */
+.pomo-card { margin-bottom: 16px; padding: 20px; }
+.pomo-card-title {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 700; font-size: 0.9rem; color: var(--text);
+  margin-bottom: 14px;
+}
+.pomo-hint { font-size: 0.8rem; color: var(--text2); margin-bottom: 16px; line-height: 1.5; }
+
+/* ── Presets grid ── */
+.pomo-presets-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.pomo-preset-card {
+  padding: 14px 12px; border-radius: 12px; cursor: pointer;
+  border: 2px solid var(--border);
+  background: var(--bg2);
+  text-align: left; transition: all 0.2s;
+  width: 100%;
+}
+.pomo-preset-card.active { border-color: var(--accent); background: var(--accent-glow2); }
+.pomo-preset-card.disabled { cursor: not-allowed; opacity: 0.6; }
+.pomo-preset-name { font-weight: 700; font-size: 0.82rem; color: var(--text); margin-bottom: 5px; }
+.pomo-preset-card.active .pomo-preset-name { color: var(--accent); }
+.pomo-preset-time { font-family: JetBrains Mono,monospace; font-size: 0.75rem; color: var(--text2); }
+.pomo-preset-detail { font-size: 0.7rem; color: var(--text3); margin-top: 3px; }
+
+/* ── Config rows ── */
+.pomo-config-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.pomo-config-left {
+  display: flex; align-items: flex-start; gap: 8px; padding-top: 4px;
+  flex-shrink: 0; min-width: 120px;
+}
+.pomo-config-title { font-weight: 600; font-size: 0.875rem; color: var(--text); }
+.pomo-config-sub { font-size: 0.7rem; color: var(--text3); margin-top: 2px; }
+.pomo-config-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.pomo-divider { height: 1px; background: var(--border); margin: 14px 0; }
+.pomo-error { color: var(--red); font-size: 0.75rem; }
+
+/* ── Time input (H:M:S row) ── */
+.pomo-time-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pomo-colon {
+  font-weight: 700; font-size: 1.3rem; color: var(--text3);
+  padding-bottom: 18px; line-height: 1; user-select: none;
+}
+
+/* ── Spin field ── */
+.pomo-spin-field {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.pomo-spin-btn {
+  width: 36px; height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg2); color: var(--text2);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  font-family: Material Icons Round;
+  padding: 0;
+}
+.pomo-spin-btn:hover:not(:disabled) { background: var(--card2); color: var(--text); border-color: var(--border2); }
+.pomo-spin-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.pomo-spin-input {
+  width: 56px;
+  text-align: center;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  font-family: JetBrains Mono,monospace;
+  font-weight: 700;
+  font-size: 1.5rem;
+  padding: 6px 4px;
+  outline: none;
+  transition: border-color 0.2s;
+  -moz-appearance: textfield;
+}
+.pomo-spin-input::-webkit-outer-spin-button,
+.pomo-spin-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.pomo-spin-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.pomo-spin-input:disabled { opacity: 0.4; cursor: not-allowed; }
+.pomo-spin-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); margin-top: 2px; }
+
+/* ── Rounds ── */
+.pomo-rounds-row { display: flex; align-items: center; gap: 10px; }
+.pomo-round-btn {
+  width: 36px; height: 36px; border-radius: 9px;
+  border: 1px solid var(--border); background: var(--bg2);
+  color: var(--text2); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.pomo-round-btn:hover:not(:disabled) { background: var(--card2); color: var(--text); }
+.pomo-round-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.pomo-rounds-input {
+  width: 56px; text-align: center;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 9px; color: var(--text);
+  font-family: JetBrains Mono,monospace;
+  font-weight: 700; font-size: 1.4rem;
+  padding: 6px 4px; outline: none;
+  -moz-appearance: textfield;
+}
+.pomo-rounds-input::-webkit-outer-spin-button,
+.pomo-rounds-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.pomo-rounds-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.pomo-rounds-input:disabled { opacity: 0.4; cursor: not-allowed; }
+.pomo-rounds-label { font-size: 0.82rem; color: var(--text2); font-weight: 500; }
+
+/* ── Summary pill ── */
+.pomo-summary {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 0.8rem; color: var(--text2);
+  background: var(--accent-glow2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 14px; margin-top: 14px;
+}
+
+/* ── Session grid ── */
+.pomo-session-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;
+}
+
+/* ── Notification button ── */
+.pomo-notif-btn {
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 16px; border-radius: 99px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text2);
+  font-family: Poppins,sans-serif; font-weight: 600; font-size: 0.8rem;
+  cursor: pointer; transition: all 0.2s; width: 100%; justify-content: center;
+}
+.pomo-notif-btn.on { background: var(--green-glow); color: var(--green); border-color: rgba(0,230,118,0.3); }
+.pomo-notif-btn:hover:not(.on) { background: var(--card2); color: var(--text); }
+
+/* ── Timer panel ── */
+.pomo-timer-panel { display: flex; flex-direction: column; align-items: center; gap: 0; }
+
+/* Ring */
+.pomo-ring-wrap {
+  position: relative; width: 260px; height: 260px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16px; flex-shrink: 0;
+}
+.pomo-ring-svg {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+}
+.pomo-ring-center {
+  position: relative; z-index: 1; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.pomo-phase-icon { font-size: 28px; margin-bottom: 2px; }
+.pomo-timer-digits {
+  font-family: JetBrains Mono,monospace;
+  font-size: 3rem; font-weight: 300;
+  letter-spacing: -0.02em; line-height: 1;
+  transition: color 0.4s;
+}
+.pomo-phase-label {
+  font-size: 0.7rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.12em; margin-top: 6px;
+}
+.pomo-round-info { font-size: 0.68rem; color: var(--text3); margin-top: 3px; }
+
+/* Dots */
+.pomo-dots {
+  display: flex; gap: 6px; justify-content: center;
+  flex-wrap: wrap; max-width: 260px; margin-bottom: 20px;
+}
+.pomo-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  transition: all 0.3s; flex-shrink: 0;
+}
+
+/* Controls */
+.pomo-controls {
+  display: flex; gap: 10px; justify-content: center;
+  flex-wrap: wrap; margin-bottom: 20px; width: 100%;
+}
+.pomo-main-btn { min-width: 130px; }
+
+/* Progress */
+.pomo-progress { width: 100%; margin-bottom: 16px; padding: 18px 20px; }
+.pomo-progress-grid {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 12px;
+}
+.pomo-done-banner {
+  margin-top: 14px; padding: 10px 14px;
+  background: var(--green-glow); border-radius: 10px;
+  text-align: center; color: var(--green); font-weight: 600; font-size: 0.875rem;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+
+/* Tip */
+.pomo-tip {
+  text-align: center; color: var(--text3); font-size: 0.76rem;
+  line-height: 1.6; padding: 0 8px; width: 100%;
+}
+
+/* ── Tablet ≤ 900px: stack layout ── */
+@media (max-width: 900px) {
+  .pomo-layout { grid-template-columns: 1fr; }
+  .pomo-timer-panel { order: -1; }
+  .pomo-ring-wrap { width: 220px; height: 220px; }
+  .pomo-timer-digits { font-size: 2.6rem; }
+}
+
+/* ── Mobile ≤ 600px ── */
+@media (max-width: 600px) {
+  .pomo-presets-grid { grid-template-columns: 1fr 1fr; }
+  .pomo-session-grid { grid-template-columns: 1fr; }
+  .pomo-ring-wrap { width: 200px; height: 200px; }
+  .pomo-timer-digits { font-size: 2.3rem; }
+  .pomo-phase-icon { font-size: 22px; }
+  .pomo-config-row { flex-direction: column; gap: 10px; }
+  .pomo-config-right { align-items: flex-start; }
+  .pomo-controls .btn-lg { padding: 11px 18px; font-size: 0.875rem; }
+  .pomo-spin-input { width: 50px; font-size: 1.3rem; }
+  .pomo-spin-btn { width: 32px; }
+}
+
+/* ── Very small ≤ 380px ── */
+@media (max-width: 380px) {
+  .pomo-presets-grid { grid-template-columns: 1fr; }
+  .pomo-ring-wrap { width: 180px; height: 180px; }
+  .pomo-timer-digits { font-size: 2rem; }
+  .pomo-tabs { flex-direction: column; }
+  .pomo-controls { flex-direction: column; align-items: stretch; }
+  .pomo-controls .btn { width: 100%; }
+  .pomo-progress-grid { grid-template-columns: repeat(3,1fr); gap: 8px; }
+}
+
+/* Touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .pomo-spin-btn { min-height: 40px; width: 40px; }
+  .pomo-round-btn { min-height: 44px; min-width: 44px; }
+  .pomo-tab { min-height: 44px; }
+}
+`;
