@@ -12,6 +12,7 @@ import PomodoroTimer from './pages/PomodoroTimer';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Landing from './pages/Landing';
+import OAuthSuccess from './pages/OAuthSuccess';
 import './App.css';
 
 function PrivateRoute({ children }) {
@@ -26,10 +27,11 @@ function AppLayout() {
   if (!user) {
     return (
       <Routes>
-        <Route path="/welcome"  element={<Landing />} />
-        <Route path="/login"    element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="*"         element={<Landing />} />
+        <Route path="/oauth/success" element={<OAuthSuccess />} />
+        <Route path="/welcome"       element={<Landing />} />
+        <Route path="/login"         element={<Login />} />
+        <Route path="/register"      element={<Register />} />
+        <Route path="*"              element={<Landing />} />
       </Routes>
     );
   }
@@ -38,7 +40,6 @@ function AppLayout() {
     <div className="app-layout">
       <Sidebar />
       <div className="app-content">
-        {/* Mobile topbar spacer */}
         <div className="mobile-topbar-spacer" />
         <main className="main-content">
           <Routes>
@@ -48,9 +49,7 @@ function AppLayout() {
             <Route path="/pomodoro"    element={<PomodoroTimer />} />
             <Route path="/new"         element={<NewSession />} />
             <Route path="/session/:id" element={<ActiveSession />} />
-            <Route path="/welcome"     element={<Landing />} />
-            <Route path="/login"       element={<Navigate to="/" />} />
-            <Route path="/register"    element={<Navigate to="/" />} />
+            <Route path="/oauth/success" element={<OAuthSuccess />} />
             <Route path="*"            element={<Navigate to="/" />} />
           </Routes>
         </main>
@@ -64,7 +63,9 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <Router>
-          <AppLayout />
+          <div className="app">
+            <AppLayout />
+          </div>
         </Router>
       </AuthProvider>
     </ThemeProvider>
