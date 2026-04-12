@@ -15,7 +15,6 @@ const sessionSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['Study', 'Work', 'Reading', 'Coding', 'Exercise', 'Meditation', 'Other'],
       default: 'Study',
     },
     startTime: {
@@ -23,51 +22,28 @@ const sessionSchema = new mongoose.Schema(
       required: true,
       default: Date.now,
     },
-    endTime: {
-      type: Date,
-      default: null,
-    },
-    duration: {
-      // stored in seconds
-      type: Number,
-      default: 0,
-    },
+    endTime:   { type: Date,   default: null },
+    duration:  { type: Number, default: 0 },   // seconds
     status: {
       type: String,
       enum: ['active', 'paused', 'completed'],
       default: 'active',
     },
-    notes: {
-      type: String,
-      trim: true,
-      maxlength: [500, 'Notes cannot exceed 500 characters'],
-      default: '',
-    },
-    pausedAt: {
-      // timestamp when last paused (null if not paused)
-      type: Date,
-      default: null,
-    },
-    totalPausedTime: {
-      // accumulated pause time in seconds
-      type: Number,
-      default: 0,
-    },
+    notes:           { type: String, trim: true, maxlength: [500], default: '' },
+    pausedAt:        { type: Date,   default: null },
+    totalPausedTime: { type: Number, default: 0 },
   },
-  {
-    timestamps: true, // adds createdAt and updatedAt
-  }
+  { timestamps: true }
 );
 
-// Virtual: formatted duration string (e.g. "1h 23m 45s")
 sessionSchema.virtual('formattedDuration').get(function () {
-  const secs = this.duration;
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
-  if (h > 0) return `${h}h ${m}m ${s}s`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
+  const s = this.duration;
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}h ${m}m ${sec}s`;
+  if (m > 0) return `${m}m ${sec}s`;
+  return `${sec}s`;
 });
 
 sessionSchema.set('toJSON', { virtuals: true });
