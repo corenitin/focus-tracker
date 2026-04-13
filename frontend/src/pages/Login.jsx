@@ -114,7 +114,12 @@ export default function Login() {
               onChange={handleChange} required autoFocus />
           </div>
           <div className="form-group">
-            <label className="form-label">Password</label>
+            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              Password
+              <Link to="/forgot-password" style={{ fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 600, textDecoration: 'none', textTransform: 'none', letterSpacing: 0 }}>
+                Forgot password?
+              </Link>
+            </label>
             <input className="form-input" type="password" name="password"
               placeholder="••••••••" value={form.password}
               onChange={handleChange} required />

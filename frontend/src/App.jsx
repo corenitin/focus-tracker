@@ -13,6 +13,9 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Landing from './pages/Landing';
 import OAuthSuccess from './pages/OAuthSuccess';
+import ForgotPassword from './pages/ForgotPassword';
+import VerifyOTP from './pages/VerifyOTP';
+import ResetPassword from './pages/ResetPassword';
 import './App.css';
 
 function PrivateRoute({ children }) {
@@ -27,11 +30,14 @@ function AppLayout() {
   if (!user) {
     return (
       <Routes>
-        <Route path="/oauth/success" element={<OAuthSuccess />} />
-        <Route path="/welcome"       element={<Landing />} />
-        <Route path="/login"         element={<Login />} />
-        <Route path="/register"      element={<Register />} />
-        <Route path="*"              element={<Landing />} />
+        <Route path="/oauth/success"   element={<OAuthSuccess />} />
+        <Route path="/welcome"         element={<Landing />} />
+        <Route path="/login"           element={<Login />} />
+        <Route path="/register"        element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/verify-otp"      element={<VerifyOTP />} />
+        <Route path="/reset-password"  element={<ResetPassword />} />
+        <Route path="*"                element={<Landing />} />
       </Routes>
     );
   }
@@ -43,14 +49,14 @@ function AppLayout() {
         <div className="mobile-topbar-spacer" />
         <main className="main-content">
           <Routes>
-            <Route path="/"            element={<Dashboard />} />
-            <Route path="/analytics"   element={<Analytics />} />
-            <Route path="/history"     element={<History />} />
-            <Route path="/pomodoro"    element={<PomodoroTimer />} />
-            <Route path="/new"         element={<NewSession />} />
-            <Route path="/session/:id" element={<ActiveSession />} />
+            <Route path="/"              element={<Dashboard />} />
+            <Route path="/analytics"     element={<Analytics />} />
+            <Route path="/history"       element={<History />} />
+            <Route path="/pomodoro"      element={<PomodoroTimer />} />
+            <Route path="/new"           element={<NewSession />} />
+            <Route path="/session/:id"   element={<ActiveSession />} />
             <Route path="/oauth/success" element={<OAuthSuccess />} />
-            <Route path="*"            element={<Navigate to="/" />} />
+            <Route path="*"              element={<Navigate to="/" />} />
           </Routes>
         </main>
       </div>
